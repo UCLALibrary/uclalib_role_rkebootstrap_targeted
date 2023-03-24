@@ -1,4 +1,4 @@
-uclalib_role_rkebootstrap
+uclalib_role_rkebootstrap_targeted
 =========
 
 This role is meant to be run against a UCLA Library provisioned Rancher RKE cluster to bootstrap initial components.
