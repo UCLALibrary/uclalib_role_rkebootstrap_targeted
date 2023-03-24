@@ -1,0 +1,12 @@
+---
+
+# Install Ingress Nginx
+#---------------------------------------------------------
+- name: "Install Ingress Nginx helm chart on cluster: {{ rke_cluster_id }}"
+  shell: >
+    helm repo add ingress-nginx "{{ ingress_nginx_repo }}"
+    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace 
+    --set 'controller.ingressClassResource.default=true'
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+#---------------------------------------------------------

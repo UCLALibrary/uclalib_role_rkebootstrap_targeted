@@ -1,0 +1,16 @@
+---
+
+# Calico CNI Configuration
+#---------------------------------------------------------
+- name: "Enable automatic host endpoint in Calico on cluster: {{ rke_cluster_id }}"
+  shell: |
+    kubectl patch KubeControllersConfiguration default --type=merge --patch='{"spec": {"controllers": {"node": {"hostEndpoint": {"autoCreate": "Enabled"}}}}}'
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+
+- name: "Adjust FelixConfiguration to disable fail safe inbound ports on cluster: {{ rke_cluster_id }}"
+  shell: |
+    kubectl patch FelixConfiguration default --type=merge --patch='{"spec": {"failsafeInboundHostPorts": []}}'
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+#---------------------------------------------------------

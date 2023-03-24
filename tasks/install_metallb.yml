@@ -1,0 +1,11 @@
+--- 
+
+# Install MetalLB
+#---------------------------------------------------------
+- name: "Install MetalLB helm chart on cluster: {{ rke_cluster_id }}"
+  shell: |
+    helm repo add metallb "{{ metallb_repo }}"
+    helm upgrade --install metallb metallb/metallb --namespace metallb-system --create-namespace
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+#---------------------------------------------------------

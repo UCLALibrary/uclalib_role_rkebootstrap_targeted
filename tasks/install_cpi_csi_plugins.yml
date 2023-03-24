@@ -1,0 +1,76 @@
+--- 
+
+# Prep for CPI/CSI installation
+#---------------------------------------------------------
+- name: "Create temp directory for storing vSphere installation and config files on cluster: {{ rke_cluster_id }}"
+  tempfile:
+    state: directory
+    suffix: csibuild
+  register: vsphere_config_tempdir
+
+- name: "Clone Rancher-specific vSphere CPI/CSI charts to install on cluster: {{ rke_cluster_id }}"
+  git: 
+    repo: "{{ vsphere_cpi_csi_chart_url }}"
+    dest: "{{ vsphere_config_tempdir.path }}/vsphere-charts"
+#---------------------------------------------------------
+
+# Deploy vSphere Cloud Provider Interface (CPI)
+#---------------------------------------------------------
+- name: "CPI - Taint all nodes in the cluster: {{ rke_cluster_id }}"
+  shell: |
+    kubectl taint nodes --all=true node.cloudprovider.kubernetes.io/uninitialized=true:NoSchedule
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+
+- name: "CPI - Deploy Rancher-specific vSphere Cloud Provider Interface helm chart on cluster: {{ rke_cluster_id }}"
+  shell: >
+    helm upgrade --install vsphere-cpi {{ vsphere_config_tempdir.path }}/vsphere-charts/charts/rancher-vsphere-cpi 
+    --namespace kube-system --set vCenter.host={{ vcenter_fqdn | quote }} --set vCenter.username={{ vcenter_username | quote }} 
+    --set vCenter.password={{ vcenter_user_password | quote }} --set vCenter.datacenters={{ vcenter_datacenter_name | quote }}
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+  no_log: True
+#---------------------------------------------------------
+
+- name: "Pause for 1 minutes to let the Cloud Provider Interface Plug-in finish deploying on cluster: {{ rke_cluster_id }}"
+  pause:
+    minutes: 1
+
+# Deploy vSphere Container Storage Plug-in (CSI)
+#---------------------------------------------------------
+- name: "CSI - Get number of control plane nodes in cluster on cluster: {{ rke_cluster_id }}"
+  shell: |
+    kubectl get nodes -l node-role.kubernetes.io/controlplane=true -o name | wc -l
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+  register: num_controlplane_nodes
+
+- name: "CSI - Deploy Rancher-specific vSphere Container Storage Interface helm chart on cluster: {{ rke_cluster_id }}"
+  shell: >
+    helm upgrade --install vsphere-csi {{ vsphere_config_tempdir.path }}/vsphere-charts/charts/rancher-vsphere-csi --namespace {{ vsphere_csi_namespace }} --create-namespace
+    --set vCenter.host={{ vcenter_fqdn | quote }} --set vCenter.clusterId={{ rke_cluster_id }} --set vCenter.datacenters={{ vcenter_datacenter_name | quote }} 
+    --set vCenter.username={{ vcenter_username | quote }} --set vCenter.password={{ vcenter_user_password | quote }}
+    --set storageClass.datastoreURL={{ vcenter_datastore_url | quote }} --set storageClass.allowVolumeExpansion={{ vcenter_vol_expansion }}
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+  no_log: True
+
+- name: "CSI - Patch vSphere Container Storage Plug-in deployment replica count on cluster: {{ rke_cluster_id }}"
+  shell: |
+    kubectl --namespace {{ vsphere_csi_namespace }} patch deployment vsphere-csi-controller --type=merge --patch='{"spec":{"replicas": {{ num_controlplane_nodes.stdout }}}}'
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+  when: num_controlplane_nodes.stdout != 3
+#---------------------------------------------------------
+
+# Clean-up for CPI/CSI installation
+#---------------------------------------------------------
+- name: "Remove temp directory for storing vSphere installation and config files on cluster: {{ rke_cluster_id }}"
+  file:
+    path: "{{ vsphere_config_tempdir.path }}"
+    state: absent
+#---------------------------------------------------------
+
+- name: "Pause for 1 minutes to let all Pods finish deploying on cluster: {{ rke_cluster_id }}"
+  pause:
+    minutes: 1

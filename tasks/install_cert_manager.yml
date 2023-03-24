@@ -1,0 +1,11 @@
+---
+
+#  Install cert-manager
+#---------------------------------------------------------
+- name: "Install cert-manager helm chart on cluster: {{ rke_cluster_id }}"
+  shell: |
+    helm repo add jetstack "{{ cert_manager_repo }}"
+    helm upgrade --install --version "{{ cert_manager_version }}" -n cert-manager --create-namespace cert-manager jetstack/cert-manager --set installCRDs=true
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dir }}/kubeconfig_{{ rke_cluster_id }}"
+#---------------------------------------------------------

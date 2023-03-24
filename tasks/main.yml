@@ -1,0 +1,37 @@
+---
+
+- import_tasks: install_deploy_tools.yml
+  tags:
+    - deploy-tools
+
+- import_tasks: download_cluster_kubeconfig.yml
+  tags:
+    - download-kubeconfig
+
+- import_tasks: calico_cni_config.yml
+  tags:
+    - calico-cni
+
+- import_tasks: install_cert_manager.yml
+  tags:
+    - cert-manager 
+
+- import_tasks: install_external_secrets.yml 
+  tags:
+    - external-secrets
+
+- import_tasks: install_metallb.yml
+  tags:
+    - metallb 
+
+- import_tasks: install_cpi_csi_plugins.yml
+  tags:
+    cpi-csi
+
+- import_tasks: install_rke_bootstrap_chart.yml
+  tags:
+    - rke-bootstrap-chart 
+
+- import_tasks: install_ingress_nginx.yml
+  tags:
+    ingress-nginx
